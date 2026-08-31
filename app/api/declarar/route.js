@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { generateUniqueId, generateHash, generateQR } from '@/lib/cryptoUtils';
+import { supabase } from '@/lib/supabase';
 
-export async function POST(request) {
+export async function POST(request: Request) {
   try {
     const body = await request.json();
 
@@ -14,22 +15,41 @@ export async function POST(request) {
       nivel,
       herramientas,
       finalidades,
-      descripcion
+      descripcion,
+      classroom_url
     } = body;
 
-    // Generar metadata
-    const id = generateUniqueId(Math.floor(Math.random() * 900000) + 100000); // ID temporal para prueba
+    // 1. Generar metadata, Hash y QR
+    const id = generateUniqueId(Math.floor(Math.random() * 900000) + 100000);
     const created_at = new Date().toISOString();
-
-    // Generar Hash criptográfico
     const hash = generateHash({ id, student_email, coursework_id, nivel, created_at });
 
-    // Generar QR que apunta a la verificación
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://cesd-ia.vercel.app';
     const verificationUrl = `${baseUrl}/ver/${id}`;
     const qrCodeBase64 = await generateQR(verificationUrl);
 
-    // Respuesta exitosa
+    // 2. Guardar el registro completo en Supabase
+    const { error: dbError } = await supabase
+      .from('declaraciones')
+      .insert([
+        {
+          alumno_nombre: student_name,
+          herramientas_ia: Array.isArray(herramientas) ? herramientas.join(', ') : herramientas,
+          uso_ia: nivel || descripcion,
+          intervencion_humana: finalidades,
+          classroom_url: classroom_url || verificationUrl,
+        },
+      ]);
+
+    if (dbError) {
+      console.error('Error al guardar en Supabase:', dbError);
+      return NextResponse.json(
+        { success: false, message: 'Error al guardar en la base de datos' },
+        { status: 500 }
+      );
+    }
+
+    // 3. Responder al cliente con todos los datos generados
     return NextResponse.json({
       success: true,
       data: {

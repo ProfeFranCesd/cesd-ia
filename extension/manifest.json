@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Transparencia IA - CESD",
+  "version": "1.0.0",
+  "description": "Sello de Transparencia IA integrado para Google Classroom",
+  "content_scripts": [
+    {
+      "matches": ["https://classroom.google.com/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ]
+}
