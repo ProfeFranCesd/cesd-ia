@@ -1,12 +1,16 @@
 'use client'
 
 import React, { useState } from 'react'
-import { CheckCircle2, ShieldCheck, Loader2 } from 'lucide-react'
+import { CheckCircle2, ShieldCheck, Loader2, Copy, Check } from 'lucide-react'
 
 export default function ClassroomAddonPage() {
   const [declarado, setDeclarado] = useState(false)
   const [cargando, setCargando] = useState(false)
   const [nivel, setNivel] = useState('asistido')
+  
+  // Guardar datos devueltos por la API
+  const [verificationUrl, setVerificationUrl] = useState('')
+  const [copiado, setCopiado] = useState(false)
 
   // Campos del formulario
   const [herramientas, setHerramientas] = useState('')
@@ -19,7 +23,6 @@ export default function ClassroomAddonPage() {
     setCargando(true)
 
     try {
-      // Capturar la URL de Classroom enviada como parámetro por la extensión
       const searchParams = new URLSearchParams(window.location.search)
       const classroomUrl = searchParams.get('url') || ''
 
@@ -42,7 +45,15 @@ export default function ClassroomAddonPage() {
       const result = await res.json()
 
       if (result.success) {
+        const url = result.data?.verificationUrl || ''
+        setVerificationUrl(url)
         setDeclarado(true)
+
+        // Copiar automáticamente al portapapeles
+        if (url && navigator.clipboard) {
+          navigator.clipboard.writeText(url)
+          setCopiado(true)
+        }
       } else {
         alert('Error al guardar la declaración: ' + (result.message || result.error))
       }
@@ -51,6 +62,14 @@ export default function ClassroomAddonPage() {
       alert('Ocurrió un error de conexión al enviar el sello.')
     } finally {
       setCargando(false)
+    }
+  }
+
+  const copiarAlPortapapeles = () => {
+    if (verificationUrl && navigator.clipboard) {
+      navigator.clipboard.writeText(verificationUrl)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 3000)
     }
   }
 
@@ -157,16 +176,44 @@ export default function ClassroomAddonPage() {
                   <Loader2 className="size-4 animate-spin" /> Guardando...
                 </>
               ) : (
-                'Adjuntar Sello a la Tarea'
+                'Generar Sello de Transparencia'
               )}
             </button>
           </form>
         ) : (
-          <div className="text-center py-6 space-y-2">
+          <div className="text-center py-4 space-y-3 text-xs">
             <CheckCircle2 className="size-10 text-emerald-500 mx-auto" />
-            <p className="font-semibold text-emerald-900 text-sm">¡Sello Adjuntado con Éxito!</p>
-            <p className="text-xs text-muted-foreground">
-              Tu profesor podrá verificar el registro detallado desde su panel de entregas.
+            <div>
+              <p className="font-semibold text-emerald-900 text-sm">¡Sello Registrado con Éxito!</p>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                El enlace se ha copiado automáticamente a tu portapapeles.
+              </p>
+            </div>
+
+            {verificationUrl && (
+              <div className="bg-muted p-2 rounded-md text-left break-all font-mono text-[10px] space-y-2 border border-border">
+                <span className="text-muted-foreground block font-sans font-semibold text-[10px]">Enlace de Verificación:</span>
+                <p className="text-foreground">{verificationUrl}</p>
+                
+                <button
+                  onClick={copiarAlPortapapeles}
+                  className="w-full py-1.5 px-3 rounded bg-primary text-primary-foreground font-sans font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-primary/90 transition-colors"
+                >
+                  {copiado ? (
+                    <>
+                      <Check className="size-3.5" /> ¡Copiado!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="size-3.5" /> Copiar Enlace para Classroom
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            <p className="text-[10px] text-muted-foreground bg-amber-500/10 text-amber-900 p-2 rounded border border-amber-500/20">
+              📌 <b>Paso final:</b> Volvé a tu tarea de Classroom, hace clic en <b>Añadir o crear ➔ Enlace</b> y pegá este enlace (Ctrl + V) antes de entregar.
             </p>
           </div>
         )}
