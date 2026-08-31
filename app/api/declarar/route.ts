@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { generateUniqueId, generateHash, generateQR } from '@/lib/cryptoUtils';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
+    const supabase = getSupabaseClient();
     const body = await request.json();
 
     const {
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
       .from('declaraciones')
       .insert([
         {
+          id: id, // Permite que la vista /ver/[id] recupere el registro directamente
           alumno_nombre: student_name,
           herramientas_ia: Array.isArray(herramientas) ? herramientas.join(', ') : herramientas,
           uso_ia: nivel || descripcion,
@@ -44,7 +46,7 @@ export async function POST(request: Request) {
     if (dbError) {
       console.error('Error al guardar en Supabase:', dbError);
       return NextResponse.json(
-        { success: false, message: 'Error al guardar en la base de datos' },
+        { success: false, message: 'Error al guardar en la base de datos: ' + dbError.message },
         { status: 500 }
       );
     }
@@ -66,10 +68,10 @@ export async function POST(request: Request) {
       }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error en API declarar:', error);
     return NextResponse.json(
-      { success: false, message: 'Error al procesar la declaración' },
+      { success: false, message: error.message || 'Error al procesar la declaración' },
       { status: 500 }
     );
   }
